@@ -29,6 +29,8 @@ report is mock data copied from the brief.
   credentials are stored in this project).
 - Workspace user/source path: `yahuja2@wisc.edu` and
   `/Workspace/Users/yahuja2@wisc.edu/sleepsafe-agent`.
+- The Databricks `sleepsafe-agent` source folder has a copy of this
+  `CONTEXT.md`; keep it synced after future project changes.
 - App name: `sleepsafe-agent`.
 - Live App: <https://sleepsafe-agent-7474648945814205.aws.databricksapps.com>.
 - Swagger UI: <https://sleepsafe-agent-7474648945814205.aws.databricksapps.com/docs>.
@@ -266,3 +268,7 @@ available.
   configuration, and documentation to Git; excluded the local Databricks sync
   snapshot and generated environment/data files. Verified the project tests
   before pushing the branch.
+- 2026-09-26: Updated the `CONTEXT.md` copy in the Databricks
+  `sleepsafe-agent` source folder after finding that its previous copy lacked
+  the preprocessing and GitHub updates. Verified the exported workspace copy
+  matches the local file; the deployed agent code was not changed.
