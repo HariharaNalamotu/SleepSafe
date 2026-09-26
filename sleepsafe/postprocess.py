@@ -121,7 +121,19 @@ def session_summary(session_id: str, start_utc: datetime, probs: np.ndarray, eve
         e["end_utc"] = (start_utc + timedelta(seconds=e["end_offset_s"])).isoformat()
     for a, b, reason in quality:
         events.append({"id": f"q{a}", "type": "low_signal", "start_offset_s": a, "end_offset_s": b,
-                       "duration_s": b - a, "reason": reason})
+                       "duration_s": b - a, "reason": reason,
+                       "start_utc": (start_utc + timedelta(seconds=a)).isoformat(),
+                       "end_utc": (start_utc + timedelta(seconds=b)).isoformat()})
+    counts.setdefault("apnea", 0)
+    counts.setdefault("hypopnea", 0)
+    # respiratory events per hour of (estimated) sleep, for each clock hour of the recording
+    denom = asleep if cfg.gate_on_sleep else ~bad
+    by_hour = []
+    for h in range(0, T, 3600):
+        hours = denom[h:h + 3600].sum() / 3600
+        n = sum(h <= e["start_offset_s"] < h + 3600 for e in resp)
+        by_hour.append(round(n / hours, 1) if hours > 0 else None)
+    onset = int(np.argmax(asleep)) if asleep.any() else None
 
     severity = None
     if ahi is not None:
@@ -146,9 +158,12 @@ def session_summary(session_id: str, start_utc: datetime, probs: np.ndarray, eve
             "end_utc": (start_utc + timedelta(seconds=T)).isoformat(),
             "duration_s": T,
             "valid_audio_s": valid_s,
+            "excluded_s": {"dropout": int(bad.sum())},
             "estimated_sleep_s": sleep_s,
+            "sleep_onset_offset_s": onset,
         },
         "summary": {
+            "estimated_ahi": None if ahi is None else round(ahi, 1),
             "respiratory_events_per_hour": None if ahi is None else round(ahi, 1),
             "rate_basis": "per hour of estimated sleep" if cfg.gate_on_sleep else "per hour of valid recording",
             "severity_estimate": severity,
@@ -157,8 +172,10 @@ def session_summary(session_id: str, start_utc: datetime, probs: np.ndarray, eve
             "counts": counts,
             "snore_pct_of_sleep": round(100 * snore_s / sleep_s, 1) if sleep_s else None,
             "longest_apnea_s": max((e["duration_s"] for e in events if e["type"] == "apnea"), default=0),
+            "events_per_hour_by_hour": by_hour,
         },
         "events": events,
+        "events_truncated": False,
         "caveats": caveats,
     }
 

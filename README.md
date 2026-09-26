@@ -51,46 +51,62 @@ python scripts/download_convert.py --n-subjects 80        # ~275 GB streamed, ke
 .venv\Scripts\python scripts/run_session.py rec.flac --out night.json [--demo-mode]
 ```
 
-## Databricks (Free Edition) setup
+## Databricks deployment (Free Edition)
 
-1. **Catalog objects** (SQL editor):
-   ```sql
-   CREATE SCHEMA IF NOT EXISTS workspace.sleepsafe;
-   CREATE VOLUME IF NOT EXISTS workspace.sleepsafe.data;
-   ```
-2. **Upload models** to `/Volumes/workspace/sleepsafe/data/models/`: `data/pretrained/Cnn14_16k.pth`
-   and `runs/v2/model.pt` (Catalog Explorer → volume → Upload).
-3. **Code**: import this repo into the workspace (Workspace → Create → Git folder, or upload
-   `sleepsafe/` and `databricks/` to `/Workspace/Users/<you>/SleepSafe/`).
-4. **LLM endpoint**: open *Serving*, pick an available pay-per-token chat model (Claude if listed),
-   and put its name in `databricks/job.json` (`--llm_endpoint`).
-5. **Job**: fill in `<YOUR_EMAIL>` and the endpoint in `databricks/job.json`, then
-   `databricks jobs create --json @databricks/job.json` (or create it in the UI with the same settings).
-   If the `download.pytorch.org` index is blocked, replace the two torch lines with plain `torch`.
-6. **Token**: Settings → Developer → Access tokens; used by the Pi.
-7. **Pi**: `pip install requests`, then
-   ```bash
-   export DATABRICKS_HOST=https://<workspace-host> DATABRICKS_TOKEN=<token>
-   python pi/uploader.py --watch-dir /path/to/chunks --volume /Volumes/workspace/sleepsafe/data \
-       --job-id <job id> --duration-min 30
-   ```
-   Capture must be 16 kHz mono (or any rate — it's resampled), **without** noise suppression,
-   noise gates or AGC.
+Live workspace: `https://dbc-0cc75cba-cde3.cloud.databricks.com` (catalog `workspace`, schema `default`).
 
-### Dashboard queries
+| Piece | Where |
+|---|---|
+| Audio + models | volume `/Volumes/workspace/default/sleepsafe` (`chunks/<session>/`, `raw/<session>/recording.wav`, `models/`, `reports/`) |
+| Pipeline code | `/Workspace/Users/yahuja2@wisc.edu/sleepsafe-model` |
+| Processing job | `sleepsafe-process-session` (serverless CPU; report LLM `databricks-gpt-oss-120b`) |
+| Tables | `sleepsafe_sessions` (report_json), `sleepsafe_events` (event_json), `sleepsafe_reports` (Markdown) |
+| Dashboard views | `sleepsafe_v_sessions`, `sleepsafe_v_events`, `sleepsafe_v_event_counts` |
+| API (Databricks App) | `https://sleepsafe-agent-7474648945814205.aws.databricksapps.com` (`/docs`) |
+
+Redeploy after changing pipeline code or the model (idempotent):
+
+```bash
+export DATABRICKS_HOST=https://dbc-0cc75cba-cde3.cloud.databricks.com DATABRICKS_TOKEN=<token>
+python scripts/fetch_encoder.py
+python scripts/deploy_databricks.py        # tables, views, model upload, code, job
+```
+
+Process a session:
+
+```bash
+# live, from the Pi (watches a folder of 10 s chunks; triggers the job when stopped)
+python pi/uploader.py --watch-dir /path/to/chunks --volume /Volumes/workspace/default/sleepsafe     --job-id <job id> --duration-min 30 [--demo-mode]
+# or replay a finished recording through the same path (for the time-lapse demo)
+python scripts/simulate_pi.py recording.wav --session-id demo-night-1 --job-id <job id> --wait
+```
+
+Capture must be 16 kHz mono (any rate is resampled) **without** noise suppression, noise gates or AGC.
+
+### Dashboard data
+
+**REST (Databricks App, read-only):**
+
+| Route | Returns |
+|---|---|
+| `GET /sessions` | one summary row per session, newest first |
+| `GET /sessions/{id}/dashboard` | recording, summary, classification, event counts, timeline, written report, caveats |
+| `GET /sessions/{id}` | full report JSON |
+| `GET /sessions/{id}/events?type=apnea` | events |
+| `GET /sessions/{id}/report` | LLM-written Markdown report |
+| `GET /classify/{id}`, `POST /ask` | the agent's classification and Q&A |
+
+Databricks Apps require a signed-in Databricks user (or an OAuth token), so a dashboard should run
+as a Databricks App itself or call the API with an OAuth bearer token.
+
+**SQL (works with a personal access token):** `POST /api/2.0/sql/statements` on warehouse
+`66987446ea53f550`, e.g.
 
 ```sql
--- latest session summary
-SELECT session_id, start_utc, duration_s/60 AS minutes, events_per_hour, severity_estimate,
-       snore_pct_of_sleep, counts_json
-FROM workspace.sleepsafe.sessions ORDER BY processed_utc DESC LIMIT 1;
-
--- incident timeline for a session
-SELECT start_utc, type, duration_s, confidence, confidence_basis
-FROM workspace.sleepsafe.incidents WHERE session_id = :session_id ORDER BY start_offset_s;
-
--- report
-SELECT report_markdown FROM workspace.sleepsafe.reports WHERE session_id = :session_id;
+SELECT * FROM workspace.default.sleepsafe_v_sessions ORDER BY start_utc DESC;
+SELECT * FROM workspace.default.sleepsafe_v_events WHERE session_id = :sid ORDER BY start_offset_s;
+SELECT * FROM workspace.default.sleepsafe_v_event_counts WHERE session_id = :sid;
+SELECT report_markdown FROM workspace.default.sleepsafe_reports WHERE session_id = :sid;
 ```
 
 ## Limitations

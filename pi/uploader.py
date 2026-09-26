@@ -6,7 +6,7 @@ they erase quiet breathing and fake/hide breathing pauses. Resampling and a ~50 
 
     export DATABRICKS_HOST=https://<workspace>.cloud.databricks.com
     export DATABRICKS_TOKEN=<personal access token>
-    python uploader.py --watch-dir /tmp/chunks --volume /Volumes/workspace/sleepsafe/data \
+    python uploader.py --watch-dir /tmp/chunks --volume /Volumes/workspace/default/sleepsafe \
         --job-id 123456789 [--duration-min 30] [--demo-mode]
 
 Stop with Ctrl+C (or --duration-min): remaining chunks are flushed, then the job is triggered.
