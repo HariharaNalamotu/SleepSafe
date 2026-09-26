@@ -1,0 +1,143 @@
+{
+  "session_id": "a3f9c2e1-lapel-0926",
+  "model": {
+    "name": "sleepsafe-crnn",
+    "version": "0.1.0",
+    "encoder": "panns-cnn14-16k (frozen)"
+  },
+  "recording": {
+    "start_utc": "2026-09-26T23:14:05Z",
+    "end_utc": "2026-09-27T06:56:05Z",
+    "duration_s": 27720,
+    "valid_audio_s": 27060,
+    "excluded_s": {
+      "low_signal": 540,
+      "dropout": 120
+    },
+    "estimated_sleep_s": 23880,
+    "sleep_onset_offset_s": 1260
+  },
+  "summary": {
+    "estimated_ahi": 13.4,
+    "severity_estimate": "mild",
+    "severity_bands": "<5 normal, 5-15 mild, 15-30 moderate, >=30 severe",
+    "counts": {
+      "apnea": 58,
+      "hypopnea": 31,
+      "gasp": 22,
+      "cough": 9,
+      "wheeze": 2
+    },
+    "snore_pct_of_sleep": 34.2,
+    "longest_apnea_s": 41,
+    "events_per_hour_by_hour": [
+      4.1,
+      9.8,
+      18.2,
+      16.5,
+      21.0,
+      12.3,
+      11.9
+    ]
+  },
+  "events": [
+    {
+      "id": "e001",
+      "type": "wake_period",
+      "start_offset_s": 0,
+      "end_offset_s": 1260,
+      "start_utc": "2026-09-26T23:14:05Z",
+      "end_utc": "2026-09-26T23:35:05Z",
+      "duration_s": 1260,
+      "confidence": 0.91,
+      "confidence_basis": "trained"
+    },
+    {
+      "id": "e014",
+      "type": "cough",
+      "start_offset_s": 1502,
+      "end_offset_s": 1504,
+      "start_utc": "2026-09-26T23:39:07Z",
+      "end_utc": "2026-09-26T23:39:09Z",
+      "duration_s": 2,
+      "confidence": 0.78,
+      "confidence_basis": "zero_shot"
+    },
+    {
+      "id": "e027",
+      "type": "snore_episode",
+      "start_offset_s": 2950,
+      "end_offset_s": 4420,
+      "start_utc": "2026-09-27T00:03:15Z",
+      "end_utc": "2026-09-27T00:27:45Z",
+      "duration_s": 1470,
+      "confidence": 0.88,
+      "confidence_basis": "trained"
+    },
+    {
+      "id": "e031",
+      "type": "apnea",
+      "start_offset_s": 3812,
+      "end_offset_s": 3836,
+      "start_utc": "2026-09-27T00:17:37Z",
+      "end_utc": "2026-09-27T00:18:01Z",
+      "duration_s": 24,
+      "confidence": 0.83,
+      "confidence_basis": "trained",
+      "evidence": {
+        "preceded_by_snoring": true,
+        "terminated_by_gasp": "e032",
+        "min_energy_db_rel_baseline": -21.5
+      }
+    },
+    {
+      "id": "e032",
+      "type": "gasp",
+      "start_offset_s": 3836,
+      "end_offset_s": 3838,
+      "start_utc": "2026-09-27T00:18:01Z",
+      "end_utc": "2026-09-27T00:18:03Z",
+      "duration_s": 2,
+      "confidence": 0.71,
+      "confidence_basis": "zero_shot"
+    },
+    {
+      "id": "e040",
+      "type": "hypopnea",
+      "start_offset_s": 5140,
+      "end_offset_s": 5158,
+      "start_utc": "2026-09-27T00:39:45Z",
+      "end_utc": "2026-09-27T00:40:03Z",
+      "duration_s": 18,
+      "confidence": 0.58,
+      "confidence_basis": "trained"
+    },
+    {
+      "id": "e112",
+      "type": "low_signal",
+      "start_offset_s": 12600,
+      "end_offset_s": 13140,
+      "start_utc": "2026-09-27T02:44:05Z",
+      "end_utc": "2026-09-27T02:53:05Z",
+      "duration_s": 540,
+      "reason": "muffled (likely covered by bedding)"
+    },
+    {
+      "id": "e188",
+      "type": "wheeze",
+      "start_offset_s": 20110,
+      "end_offset_s": 20116,
+      "start_utc": "2026-09-27T04:49:15Z",
+      "end_utc": "2026-09-27T04:49:21Z",
+      "duration_s": 6,
+      "confidence": 0.52,
+      "confidence_basis": "zero_shot"
+    }
+  ],
+  "events_truncated": false,
+  "caveats": [
+    "Audio-only screening; not a diagnosis. Hypopnea detection is limited without SpO2.",
+    "Model trained on hospital PSG microphones; not validated on lapel-mic recordings.",
+    "zero_shot events (cough, gasp, wheeze) use uncalibrated thresholds."
+  ]
+}
