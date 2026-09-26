@@ -28,6 +28,17 @@ synchronized ambient + tracheal mics and technician-scored apneas/hypopneas, sno
 sleep stages. No manual annotation. Lapel-mic conditions are simulated with GPU augmentation
 (muffling, clothing rustle, room noise, gain, dropouts). Split by subject, stratified by AHI.
 
+## Using the trained model (no retraining needed)
+
+The trained head is committed at `runs/v2/model.pt` (test results in `runs/v2/metrics.json`).
+Fetch the frozen encoder weights (358 MB, too large for GitHub) once:
+
+```bash
+pip install torch numpy scipy soundfile requests
+python scripts/fetch_encoder.py                     # -> data/pretrained/Cnn14_16k.pth
+python scripts/run_session.py recording.flac --out night.json --device cpu
+```
+
 ## Local workflow (Windows, RTX GPU)
 
 ```powershell
