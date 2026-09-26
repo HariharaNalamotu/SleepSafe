@@ -1,0 +1,17 @@
+[Unit]
+Description=SleepSafe Bluetooth microphone capture and Databricks upload
+After=pipewire.service pipewire-pulse.service wireplumber.service
+Wants=pipewire.service pipewire-pulse.service wireplumber.service
+
+[Service]
+Type=simple
+WorkingDirectory=%h/SleepSafe
+EnvironmentFile=%h/SleepSafe/.env
+ExecStart=/usr/bin/python3 %h/SleepSafe/audio_stream.py
+Restart=on-failure
+RestartSec=10
+TimeoutStopSec=90
+UMask=0077
+
+[Install]
+WantedBy=default.target
