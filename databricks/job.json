@@ -1,0 +1,44 @@
+{
+  "name": "sleepsafe-process-session",
+  "max_concurrent_runs": 2,
+  "parameters": [
+    {"name": "session_id", "default": ""},
+    {"name": "demo_mode", "default": "false"}
+  ],
+  "tasks": [
+    {
+      "task_key": "process_session",
+      "environment_key": "sleepsafe_env",
+      "spark_python_task": {
+        "python_file": "/Workspace/Users/<YOUR_EMAIL>/SleepSafe/databricks/process_session.py",
+        "parameters": [
+          "--session_id", "{{job.parameters.session_id}}",
+          "--demo_mode", "{{job.parameters.demo_mode}}",
+          "--volume_root", "/Volumes/workspace/sleepsafe/data",
+          "--catalog", "workspace",
+          "--schema", "sleepsafe",
+          "--llm_endpoint", "<ENDPOINT_NAME_FROM_SERVING_PAGE>",
+          "--delete_chunks", "false"
+        ]
+      },
+      "timeout_seconds": 1800
+    }
+  ],
+  "environments": [
+    {
+      "environment_key": "sleepsafe_env",
+      "spec": {
+        "client": "4",
+        "dependencies": [
+          "--extra-index-url https://download.pytorch.org/whl/cpu",
+          "torch==2.11.0+cpu",
+          "numpy",
+          "scipy",
+          "soundfile",
+          "openai",
+          "databricks-sdk"
+        ]
+      }
+    }
+  ]
+}
