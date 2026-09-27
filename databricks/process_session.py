@@ -87,7 +87,8 @@ def main():
         sys.path.insert(0, "/Workspace/Users/yahuja2@wisc.edu/sleepsafe-model")
     from pyspark.sql import SparkSession
 
-    from sleepsafe.pipeline import SleepSafePipeline, assemble_chunks, load_audio
+    from sleepsafe.pipeline import (SleepSafePipeline, assemble_chunks, assemble_timed_chunks,
+                                    chunk_start_utc, load_audio)
 
     spark = SparkSession.builder.getOrCreate()
     t0 = time.time()
@@ -96,11 +97,17 @@ def main():
     raw_file = root / "raw" / sid / "recording.wav"
     meta = {}
     files = []
+    chunk_start = None
     if chunk_dir.exists():
         meta_path = chunk_dir / "session.json"
         meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
-        files = [p for p in chunk_dir.iterdir() if p.suffix.lower() in (".flac", ".wav")]
-    if files:
+        # the Pi recorder uploads into UTC date sub-folders, so search recursively
+        files = [p for p in chunk_dir.rglob("*") if p.suffix.lower() in (".flac", ".wav")]
+    timed = [p for p in files if chunk_start_utc(p) is not None]
+    if timed:
+        print(f"{len(timed)} timestamped Pi chunks for {sid}", flush=True)
+        audio, valid, chunk_start = assemble_timed_chunks(timed)
+    elif files:
         print(f"{len(files)} chunks for {sid}", flush=True)
         audio, valid = assemble_chunks(files)
     elif raw_file.exists():
@@ -109,7 +116,12 @@ def main():
     else:
         raise FileNotFoundError(f"no audio for session {sid} in {chunk_dir} or {raw_file}")
 
-    start = datetime.fromisoformat(meta["start_utc"]) if "start_utc" in meta else datetime.now(timezone.utc)
+    if chunk_start is not None:  # timestamps in the chunk names are the most accurate start time
+        start = chunk_start
+    elif "start_utc" in meta:
+        start = datetime.fromisoformat(meta["start_utc"])
+    else:
+        start = datetime.now(timezone.utc)
     pipe = SleepSafePipeline(root / "models" / "Cnn14_16k.pth", root / "models" / "model.pt", device="cpu")
     night = pipe.run(audio, sid, start, valid, demo_mode=args.demo_mode.lower() == "true")
     print(f"model done in {time.time() - t0:.0f}s: {json.dumps(night['summary'])}", flush=True)

@@ -12,7 +12,8 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
-from sleepsafe.pipeline import SleepSafePipeline, assemble_chunks, load_audio  # noqa: E402
+from sleepsafe.pipeline import (  # noqa: E402
+    SleepSafePipeline, assemble_chunks, assemble_timed_chunks, chunk_start_utc, load_audio)
 
 
 def main():
@@ -28,12 +29,19 @@ def main():
     args = ap.parse_args()
 
     src = Path(args.input)
+    chunk_start = None
     if src.is_dir():
-        files = [p for p in src.iterdir() if p.suffix.lower() in (".flac", ".wav", ".ogg")]
-        audio, valid = assemble_chunks(files)
+        files = [p for p in src.rglob("*") if p.suffix.lower() in (".flac", ".wav", ".ogg")]
+        if any(chunk_start_utc(p) for p in files):  # timestamp-named chunks from the Pi recorder
+            audio, valid, chunk_start = assemble_timed_chunks([p for p in files if chunk_start_utc(p)])
+        else:
+            audio, valid = assemble_chunks(files)
     else:
         audio, valid = load_audio(src), None
-    start = datetime.fromisoformat(args.start_utc) if args.start_utc else datetime.now(timezone.utc)
+    if args.start_utc:
+        start = datetime.fromisoformat(args.start_utc)
+    else:
+        start = chunk_start or datetime.now(timezone.utc)
 
     t0 = time.time()
     pipe = SleepSafePipeline(args.encoder, args.model, args.device)

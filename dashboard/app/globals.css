@@ -136,3 +136,19 @@ tr.link-row:hover td { background: var(--page); }
 .caveats li { margin-bottom: 4px; }
 .flag { display: inline-block; font-size: 11px; font-weight: 600; color: var(--ink-2); border-radius: 6px; padding: 1px 7px; box-shadow: 0 0 0 1px var(--ring); margin-left: 6px; }
 .error { color: var(--critical); }
+
+.device-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 14px; }
+.device-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; margin-bottom: 14px; }
+.device-grid .k { color: var(--ink-2); font-size: 12px; margin-bottom: 2px; }
+.device-state { font-size: 16px; font-weight: 650; display: flex; align-items: center; gap: 8px; }
+.rec-dot { width: 10px; height: 10px; border-radius: 5px; background: var(--critical); animation: pulse 1.4s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.35; } }
+@media (prefers-reduced-motion: reduce) { .rec-dot { animation: none; } }
+.device-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 18px; padding-top: 14px; border-top: 1px solid var(--grid); }
+.device-controls label { color: var(--ink-2); font-size: 13px; display: inline-flex; align-items: center; gap: 6px; }
+.device-controls select { font: inherit; color: var(--ink); background: var(--surface); border-radius: 8px; border: 1px solid var(--axis); padding: 5px 8px; max-width: 100%; }
+.device-controls .buttons { display: flex; gap: 8px; margin-left: auto; }
+.btn { font: inherit; font-weight: 600; border-radius: 8px; padding: 7px 14px; cursor: pointer; border: 1px solid var(--axis); background: var(--surface); color: var(--ink); }
+.btn.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn:focus-visible { outline: 2px solid var(--series-1); outline-offset: 2px; }

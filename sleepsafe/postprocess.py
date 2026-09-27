@@ -31,6 +31,32 @@ class PostConfig:
     })
 
 
+SPEECH_GATE = 0.5          # smoothed AudioSet speech prob above which the wearer is taken as awake
+SPEECH_WINDOW_S = 15
+SNORE_EVIDENCE = 0.05      # trained snore flags also need this much AudioSet "snoring" (5 s median)
+
+
+def apply_audio_gates(probs: np.ndarray, scores: np.ndarray) -> np.ndarray:
+    """Sanity gates from the pretrained AudioSet classifier, for off-domain mics (e.g. a Bluetooth
+    headset) where the trained head can misread speech as sleep or snoring.
+
+    - sustained speech => awake, no snoring, no apnea/hypopnea
+    - snoring needs some AudioSet snoring evidence
+
+    On held-out PSG test nights this raised snore F1 (0.42 -> 0.47) and touched <0.4% of
+    asleep/apnea seconds.
+    """
+    p = probs.copy()
+    speech = median_filter(scores[:, SCORE_NAMES.index("speech")], size=SPEECH_WINDOW_S, mode="nearest") >= SPEECH_GATE
+    p[speech, 0] = 0.0
+    p[speech, 1] = 0.0
+    p[speech, 2] = 0.0
+    p[speech, 3] = np.minimum(p[speech, 3], 0.05)
+    snoring = median_filter(scores[:, SCORE_NAMES.index("snoring")], size=5, mode="nearest")
+    p[snoring < SNORE_EVIDENCE, 2] = 0.0
+    return p
+
+
 def runs(mask: np.ndarray, merge_gap: int = 0, min_len: int = 1) -> list[tuple[int, int]]:
     """Boolean per-second mask -> [(start, end_exclusive)] after gap merging and length filter."""
     m = np.concatenate([[False], mask.astype(bool), [False]])
@@ -112,7 +138,11 @@ def session_summary(session_id: str, start_utc: datetime, probs: np.ndarray, eve
     counts: dict[str, int] = {}
     for e in events:
         counts[e["type"]] = counts.get(e["type"], 0) + 1
-    snore_s = sum(e["duration_s"] for e in events if e["type"] == "snore_episode")
+    snoring = np.zeros(T, bool)  # snore time counted only while asleep, so the share can't exceed 100%
+    for e in events:
+        if e["type"] == "snore_episode":
+            snoring[e["start_offset_s"]:e["end_offset_s"]] = True
+    snore_s = int((snoring & asleep).sum())
     short = T < 4 * 3600
 
     for i, e in enumerate(events, 1):

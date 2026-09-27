@@ -1,0 +1,15 @@
+[Unit]
+Description=SleepSafe Pi agent (dashboard start/stop via Databricks)
+After=network-online.target pipewire.service pipewire-pulse.service wireplumber.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/python3 %h/sleepsafe-agent/agent.py
+Environment=PYTHONUNBUFFERED=1
+Restart=always
+RestartSec=5
+UMask=0077
+
+[Install]
+WantedBy=default.target

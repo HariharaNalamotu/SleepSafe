@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { listSessions } from "@/lib/databricks";
 import { fmtClock, fmtDate, fmtDuration } from "@/lib/format";
+import DeviceControl from "./DeviceControl";
 import Severity from "./Severity";
 
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ export default async function Home() {
 
   return (
     <>
+      <DeviceControl />
       <div style={{ marginBottom: 16 }}>
         <h1>Sessions</h1>
         <p className="sub">

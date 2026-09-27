@@ -5,7 +5,7 @@ Used identically on a laptop (GPU) and in the Databricks end-of-session job (CPU
 from __future__ import annotations
 
 import re
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from math import gcd
 from pathlib import Path
 
@@ -16,7 +16,7 @@ from scipy.signal import resample_poly
 
 from .encoder import SR, Cnn14Encoder, encode, normalize_loudness
 from .model import Preprocessor, SleepHead, predict_session
-from .postprocess import PostConfig, detect_events, session_summary, signal_quality
+from .postprocess import PostConfig, apply_audio_gates, detect_events, session_summary, signal_quality
 
 MODEL_NAME = "sleepsafe-crnn"
 
@@ -29,6 +29,45 @@ def load_audio(path: str | Path) -> np.ndarray:
         g = gcd(int(sr), SR)
         x = resample_poly(x, SR // g, int(sr) // g).astype(np.float32)
     return x
+
+
+PI_CHUNK = re.compile(r"^(\d{8}T\d{6}\.\d{6})Z_")  # Pi recorder: <UTC completion time>_<device>_<uuid>.wav
+
+
+def chunk_start_utc(path: str | Path) -> datetime | None:
+    """Start time of a Pi-recorder chunk (its filename holds the completion time of 10 s of audio)."""
+    m = PI_CHUNK.match(Path(path).name)
+    if not m:
+        return None
+    end = datetime.strptime(m.group(1), "%Y%m%dT%H%M%S.%f").replace(tzinfo=timezone.utc)
+    return end - timedelta(seconds=10)
+
+
+def assemble_timed_chunks(paths: list[str | Path]) -> tuple[np.ndarray, np.ndarray, datetime]:
+    """Timestamp-named chunks -> (audio, per-second valid mask, start time).
+
+    Capture is a continuous stream, so a chunk whose timestamp lands within 1 s of the previous
+    chunk's end (write-time jitter) is joined seamlessly. Larger gaps (Bluetooth drop-outs,
+    capture restarts) become silence marked invalid instead of shifting later audio earlier.
+    """
+    timed = sorted((chunk_start_utc(p), p) for p in paths)
+    t0 = timed[0][0]
+    end_s = int(round((timed[-1][0] - t0).total_seconds())) + 12
+    audio = np.zeros(end_s * SR, np.float32)
+    valid = np.zeros(end_s * SR, bool)
+    cursor = 0
+    for start, p in timed:
+        x = load_audio(p)
+        a = int(round((start - t0).total_seconds() * SR))
+        if abs(a - cursor) < SR:
+            a = cursor
+        x = x[: len(audio) - a]
+        audio[a: a + len(x)] = x
+        valid[a: a + len(x)] = True
+        cursor = a + len(x)
+    audio, valid = audio[:cursor], valid[:cursor]
+    T = len(audio) // SR
+    return audio[: T * SR], valid[: T * SR].reshape(T, SR).all(1), t0
 
 
 def assemble_chunks(paths: list[str | Path], chunk_s: float | None = None) -> tuple[np.ndarray, np.ndarray]:
@@ -89,6 +128,7 @@ class SleepSafePipeline:
         x = self.pre(f["emb"], f["scores"], f["energy"])
         probs = predict_session(self.head, x).float().cpu().numpy()
         scores = f["scores"].float().cpu().numpy()
+        probs = apply_audio_gates(probs, scores)
         energy = f["energy"].float().cpu().numpy()
         cfg = PostConfig(**{**self.post.__dict__, "gate_on_sleep": not demo_mode})
         events = detect_events(probs, cfg, scores)
