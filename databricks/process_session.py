@@ -43,8 +43,11 @@ audio-based sleep monitoring model (lapel microphone) for one session and write 
 user who wore the microphone.
 
 Rules:
-- This is a screening aid, NOT a diagnosis. Never state that the user has a condition. Use language such as
-  "patterns consistent with" and recommend a clinical sleep study (polysomnography) when findings warrant it.
+- This is a screening aid, NOT a diagnosis. Never state or imply that the user has a condition: do not name
+  disorders or syndromes (e.g. "obstructive sleep apnea syndrome", COPD), do not say how a clinical study
+  "might classify" the findings, and do not label events obstructive or central — audio cannot tell.
+  Describe what was detected ("breathing pauses", "reduced breathing") and recommend a clinical sleep study
+  (polysomnography) when findings warrant it.
 - Base every statement on the JSON. Quote times in UTC (e.g. "around 02:51 UTC") and counts from it.
 - Weigh events by `confidence` and `confidence_basis`: "trained" events (apnea, hypopnea, snore_episode,
   wake_period) are more reliable than "zero_shot" ones (cough, gasp, snort, wheeze, speech).
